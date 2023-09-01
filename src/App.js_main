@@ -1,0 +1,247 @@
+import './App.css';
+import styles from './assets/mainStyles.module.css'
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { http } from "./libs/http";
+import React, { Component, useState } from "react";
+import TooltipComponent from "./components/TooltipComponent"
+
+class Editor extends React.Component {
+
+    constructor(props) {
+        super(props);
+        this.reactQuillRef = null; // ReactQuill component
+        this.modules = {
+            toolbar: false,
+        }
+        this.tooltipSuggestions = {}
+        this.rangeContent = {}
+        this.word = null
+        this.state = {
+            showTooltip: false,
+            tooltipSuggestions: [],
+            positionTooltip: {
+                top: 0,
+                left: 0
+            },
+        };
+        this.suggestions = []
+        window.oncontextmenu = function (e)
+        {
+            if(e.target.closest(".quill") !== null) {
+                return false
+            }
+        }
+        console.log("Test test")
+    }
+
+    componentDidMount() {
+        this.attachQuillRefs();
+    }
+
+    componentDidUpdate() {
+        this.attachQuillRefs();
+    }
+
+    attachQuillRefs = () => {
+        if (typeof this.reactQuillRef.getEditor !== 'function') return;
+        this.quillRef = this.reactQuillRef.getEditor();
+    }
+
+    handleChangeSelection = (range,source) =>  {
+        console.log(range,source)
+
+        //this.setState({showTooltip: false})
+        if (range !== null) {
+            this.setState({showTooltip: false})
+        }
+        if (range !== null && source === 'user') {
+            let rangeNew = range.length == 0 ? this.getCurrentWord(range) : null
+            if(rangeNew !== null) {
+                this.rangeContent = rangeNew
+                const selectedContent = this.quillRef.getText(rangeNew.index, rangeNew.length)
+
+                console.log('selectedContent', selectedContent)
+                this.word = selectedContent
+
+                //to_do delete
+                this.showPopup(rangeNew)
+
+                if(selectedContent) {
+                    for (const child of this.suggestions) {
+                        if (child['original'] === selectedContent) {
+                            this.tooltipSuggestions = child['suggestions']
+                            this.showPopup(rangeNew)
+                            console.log(this.tooltipSuggestions)
+                        }
+                    }
+                }
+
+                if (selectedContent == '222') {
+                    this.changeContent(range)
+                }
+            } else {
+                console.log("Null")
+            }
+        }
+    }
+
+    showPopup = (range) => {
+        let tooltip = this.quillRef.getBounds(range.index)
+
+        this.setState({
+            showTooltip: true,
+            tooltipSuggestions: this.tooltipSuggestions,
+            positionTooltip: {
+                top: tooltip.bottom + 10,
+                left: tooltip.left
+            }
+        })
+    }
+
+    closePopup = () => {
+        console.log("Close tooltip")
+        this.setState({
+            showTooltip: false
+        })
+    }
+
+    getCurrentWord = (range) => {
+        const fullText = this.quillRef.getText()
+        let currentIndex = range.index
+        let startIndex = 0
+        let lengthWord = 0
+        let endIndex = this.quillRef.getLength() - 1
+        const regWord = /\w/  
+
+        if(currentIndex != 0 && fullText[currentIndex - 1].match(regWord) !== null) {
+            currentIndex = range.index - 1
+        }
+        
+        let i = currentIndex
+        while(i >= 0) {
+            if(fullText[i].match(regWord)) {
+                startIndex = i
+            } else {
+                break
+            }
+            i-- 
+        }
+
+        let j = startIndex
+        while(j <= endIndex) {
+            if(fullText[j].match(regWord)) {
+                lengthWord++ 
+            } else {
+                break
+            }
+            j++
+        }
+
+        if(lengthWord > 0) {
+            return {index: startIndex, length: lengthWord}
+        }
+
+        return null
+    }
+
+    changeContent = (content) =>  {
+        console.log(this.rangeContent,content)
+        this.quillRef.deleteText(this.rangeContent.index, this.rangeContent.length);
+        this.quillRef.insertText(this.rangeContent.index, content);
+    }
+
+    checkText = () => {
+        let content = this.quillRef.getText();
+        this.getSuggestions({'text' : content,'language':'fr'})
+    }
+
+    removeFromDictionary  = (key) => {
+        let dictionary = JSON.parse(localStorage.getItem('fr'))
+        dictionary.splice(key, 1);
+        localStorage.setItem('fr',JSON.stringify([...new Set(dictionary)]))
+    }
+
+    setFromDictionary  = (key) => {
+        let dictionary = JSON.parse(localStorage.getItem('fr'))
+        this.quillRef.insertText(this.rangeContent.index, dictionary[key]);
+    }
+
+    saveToDictionary = () => {
+       let dictionary = JSON.parse(localStorage.getItem('fr'))
+        console.log(dictionary,'before')
+        if(!dictionary) {
+            dictionary = []
+        }
+        dictionary.push(this.word)
+        localStorage.setItem('fr',JSON.stringify([...new Set(dictionary)]))
+        console.log(localStorage.getItem('fr'))
+        console.log("Method about save to dictionary")
+    }
+
+    getListIdx(substr) {
+        let str = this.quillRef.getText()
+        let listIdx = []
+        let lastIndex = -1
+        while ((lastIndex = str.indexOf(substr, lastIndex + 1)) !== -1) {
+            if(!/^\d+$/i.test(str[lastIndex + substr.length]) && !/[a-zA-Z]/i.test(str[lastIndex + substr.length]))
+            listIdx.push({"index":lastIndex,"length":substr.length});
+        }
+        return listIdx
+    }
+
+    getSuggestions = (data) => {
+
+        http.post("/suggestion", data)
+            .then(res => {
+                this.suggestions = res.data
+                this.quillRef.removeFormat(0,this.quillRef.getText().length - 1)
+                for (const child of this.suggestions) {
+                  //  let range = this.getRange(child['original'])
+                    let ranges = this.getListIdx(child['original'])
+                    for (const range of ranges) {
+                        if(range['index'] !== -1)  this.quillRef.formatText(range['index'], range['length'], {"color" : "red"}, true);
+                        console.log(child['original'],'red');
+                    }
+                }
+            })
+            .catch(e => {
+
+            })
+    }
+
+    render() {
+        return (
+            <div className="appBlock">
+
+                <div className={styles.textArea}>
+                    {/*<div>Dictionary:</div><br/>*/}
+
+                    <ReactQuill
+                        className={"editor"}
+                        ref={(el) => {
+                            this.reactQuillRef = el;
+                        }}
+                        theme={'snow'}
+                        modules={this.modules}
+                        onKeyUp={this.checkText}
+                        placeholder={"French"}
+                        onChangeSelection={this.handleChangeSelection}
+                    />
+                    <div className="tooltipBlock">
+                        <TooltipComponent
+                            saveToDictionaryEmit = {this.saveToDictionary}
+                            changeContentEmit = {this.changeContent}
+                            closeTooltipEmit = {this.closePopup}
+                            showTooltip={this.state.showTooltip}
+                            positionTooltip={this.state.positionTooltip}
+                            tooltipSuggestions={this.tooltipSuggestions}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export default Editor;

@@ -1,0 +1,58 @@
+.popupModal {
+    min-width:150px;
+    border:1px solid #F4F5F5;
+    position:absolute;
+    background:#fff;
+    border-radius:5px;
+    padding:5px;
+    box-sizing:border-box;
+    z-index:99;
+    box-shadow:0px 0 1px 0px rgba(0,0,0,0.3);
+}
+
+.blockButton button {
+    width:100%;
+    background:transparent;
+    border-radius:0;
+    border-width:0;
+    text-align:left;
+    padding:5px 10px;
+    cursor:pointer;
+    color:#8D949A;
+    display:flex;
+    vertical-align: middle;
+    transition:all 0.2s;
+}
+
+.blockButton button:hover {
+    color:#6CA782;
+}
+
+.blockButton button svg {
+    margin-top:3px;
+}
+
+.blockButton button span {
+    margin-left:7px;
+}
+
+.suggests span {
+    transition: all 0.2s;
+    cursor:pointer;
+    border-radius:5px;
+    display:block;
+    padding:3px 10px 5px 10px;
+    color:#6CA782;
+    margin:3px 0;
+}
+
+.suggests span:hover {
+    background:#D9E8DE;
+    color:#3D423F;
+}
+
+.suggests {
+    border-bottom: 1px solid #EEF0F3;
+    padding-bottom:4px;
+    margin-bottom:8px;
+}

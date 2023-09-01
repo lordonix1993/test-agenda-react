@@ -1,0 +1,25 @@
+.textArea {
+    width: 30%;
+    margin: 0 auto 50px auto;
+    clear:both;
+}
+.dict_block{
+    position:relative;
+}
+
+.dict_word{
+    padding: 0px 5px;
+    background-color: bisque;
+    cursor: pointer;
+    border-radius: 10px;
+    margin: 5px;
+    text-wrap: nowrap;
+    transition: background-color 0.2s;
+}
+
+.dict_word:hover {
+    background-color:#c9c5c1;
+}
+.dict_pos{
+    margin-bottom: 3px;
+}
